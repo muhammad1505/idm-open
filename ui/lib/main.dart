@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -23,7 +24,6 @@ const kCyberPanel = Color(0xFF1E1E2C);
 const kNeonCyan = Color(0xFF00F0FF);
 const kNeonPink = Color(0xFFFF0055);
 const kNeonYellow = Color(0xFFF0B429);
-const kHoloBlue = Color(0x3300F0FF);
 
 class IdmApp extends StatefulWidget {
   const IdmApp({super.key});
@@ -58,7 +58,7 @@ class _IdmAppState extends State<IdmApp> {
     _log('Requesting Permissions...');
     await [
       Permission.storage,
-      Permission.manageExternalStorage, // For Android 11+
+      Permission.manageExternalStorage,
     ].request();
 
     _log('Mounting Core Systems...');
@@ -78,7 +78,7 @@ class _IdmAppState extends State<IdmApp> {
         _error = null;
       });
       await _refresh();
-      _timer = Timer.periodic(const Duration(seconds: 2), (_) => _refresh());
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) => _refresh());
     } catch (err, stack) {
       _log('CRITICAL FAILURE: $err');
       _log('Trace: $stack');
@@ -119,6 +119,12 @@ class _IdmAppState extends State<IdmApp> {
       final tasks = decoded
           .map((item) => Task.fromJson(item as Map<String, dynamic>))
           .toList();
+      // Sort: Active first, then Queued, then others by date desc
+      tasks.sort((a, b) {
+        if (a.status == 'active' && b.status != 'active') return -1;
+        if (b.status == 'active' && a.status != 'active') return 1;
+        return b.id.compareTo(a.id); // UUID compare isn\'t time-based, but good enough stability
+      });
       setState(() {
         _tasks = tasks;
       });
@@ -151,7 +157,7 @@ class _IdmAppState extends State<IdmApp> {
       }
       _log('Task Assigned ID: $id');
       if (!mounted) return;
-      _showSnack(context, 'Task Initiated: ${id.substring(0, 8)}');
+      _showSnack(context, 'Task Initiated');
       await _refresh();
     } catch (e) {
       _log('Exception during injection: $e');
@@ -227,6 +233,25 @@ class _IdmAppState extends State<IdmApp> {
     _refresh();
   }
 
+  void _remove(Task task) {
+    if (_core == null) return;
+    try {
+      _core!.removeTask(task.id);
+      _log('Task deleted: ${task.id}');
+      _refresh();
+    } catch (e) {
+      _log('Deletion failed: $e');
+      _showSnack(context, 'Deletion Failed: $e', isError: true);
+    }
+  }
+
+  void _showDetails(Task task) {
+    showDialog(
+      context: context,
+      builder: (context) => _CyberDetailDialog(task: task),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -243,10 +268,7 @@ class _IdmAppState extends State<IdmApp> {
       home: Scaffold(
         body: Stack(
           children: [
-            // Grid Background
-            Positioned.fill(
-              child: CustomPaint(painter: GridPainter()),
-            ),
+            Positioned.fill(child: CustomPaint(painter: GridPainter())),
             SafeArea(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -310,16 +332,15 @@ class _IdmAppState extends State<IdmApp> {
                   Expanded(
                     child: _tasks.isEmpty
                         ? Center(
-                            child:
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.code, size: 64, color: kNeonCyan.withOpacity(0.2)),
-                                  const SizedBox(height: 16),
-                                  Text('NO ACTIVE TASKS', 
-                                      style: TextStyle(color: kNeonCyan.withOpacity(0.5), letterSpacing: 2)),
-                                ],
-                              ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.code, size: 64, color: kNeonCyan.withOpacity(0.2)),
+                                const SizedBox(height: 16),
+                                Text('NO ACTIVE TASKS', 
+                                    style: TextStyle(color: kNeonCyan.withOpacity(0.5), letterSpacing: 2)),
+                              ],
+                            ),
                           )
                         : ListView.builder(
                             padding: const EdgeInsets.all(16),
@@ -328,9 +349,11 @@ class _IdmAppState extends State<IdmApp> {
                               final task = _tasks[index];
                               return _CyberTaskCard(
                                 task: task,
+                                onTap: () => _showDetails(task),
                                 onPause: () => _pause(task),
                                 onResume: () => _resume(task),
                                 onCancel: () => _cancel(task),
+                                onRemove: () => _remove(task),
                               );
                             },
                           ),
@@ -400,15 +423,19 @@ class GridPainter extends CustomPainter {
 class _CyberTaskCard extends StatelessWidget {
   const _CyberTaskCard({
     required this.task,
+    required this.onTap,
     required this.onPause,
     required this.onResume,
     required this.onCancel,
+    required this.onRemove,
   });
 
   final Task task;
+  final VoidCallback onTap;
   final VoidCallback onPause;
   final VoidCallback onResume;
   final VoidCallback onCancel;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -420,77 +447,84 @@ class _CyberTaskCard extends StatelessWidget {
     if (status == 'failed' || task.error != null) statusColor = kNeonPink;
     if (status == 'paused') statusColor = kNeonYellow;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: ShapeDecoration(
-        color: kCyberPanel,
-        shape: BeveledRectangleBorder(
-          side: BorderSide(color: statusColor.withOpacity(0.5), width: 1),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(10),
-            bottomRight: Radius.circular(10),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: ShapeDecoration(
+          color: kCyberPanel,
+          shape: BeveledRectangleBorder(
+            side: BorderSide(color: statusColor.withOpacity(0.5), width: 1),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(10),
+              bottomRight: Radius.circular(10),
+            ),
           ),
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.file_download, color: statusColor, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(task.url, 
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Cyber Progress Bar
-            Stack(
-              children: [
-                Container(height: 8, color: Colors.black),
-                FractionallySizedBox(
-                  widthFactor: task.totalBytes > 0 ? progress : 0,
-                  child: Container(
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      boxShadow: [BoxShadow(color: statusColor, blurRadius: 6)],
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.file_download, color: statusColor, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(task.url, 
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Stack(
+                children: [
+                  Container(height: 8, color: Colors.black),
+                  FractionallySizedBox(
+                    widthFactor: task.totalBytes > 0 ? progress : 0,
+                    child: Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        boxShadow: [BoxShadow(color: statusColor, blurRadius: 6)],
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('$percent%', style: TextStyle(color: statusColor, fontSize: 18, fontWeight: FontWeight.w900)),
-                Text(status.toUpperCase(), style: TextStyle(color: statusColor.withOpacity(0.7), fontSize: 12)),
-              ],
-            ),
-             if (task.error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text('ERR: ${task.error}', style: TextStyle(color: kNeonPink, fontSize: 10)),
-                ),
-            const Divider(color: Colors.white10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (status == 'active')
-                  _CyberMiniButton(icon: Icons.pause, color: kNeonYellow, onPressed: onPause),
-                if (status == 'paused' || status == 'failed')
-                  _CyberMiniButton(icon: Icons.play_arrow, color: kNeonCyan, onPressed: onResume),
-                const SizedBox(width: 12),
-                _CyberMiniButton(icon: Icons.stop, color: kNeonPink, onPressed: onCancel),
-              ],
-            )
-          ],
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('$percent%', style: TextStyle(color: statusColor, fontSize: 18, fontWeight: FontWeight.w900)),
+                  Text(status.toUpperCase(), style: TextStyle(color: statusColor.withOpacity(0.7), fontSize: 12)),
+                ],
+              ),
+               if (task.error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text('ERR: ${task.error}', style: TextStyle(color: kNeonPink, fontSize: 10)),
+                  ),
+              const Divider(color: Colors.white10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (status == 'active')
+                    _CyberMiniButton(icon: Icons.pause, color: kNeonYellow, onPressed: onPause),
+                  if (status == 'paused' || status == 'failed')
+                    _CyberMiniButton(icon: Icons.play_arrow, color: kNeonCyan, onPressed: onResume),
+                  
+                  const SizedBox(width: 8),
+                  if (status != 'completed')
+                    _CyberMiniButton(icon: Icons.stop, color: kNeonPink, onPressed: onCancel),
+                  
+                  const SizedBox(width: 8),
+                  _CyberMiniButton(icon: Icons.delete_outline, color: Colors.grey, onPressed: onRemove),
+                ],
+              )
+            ],
+          ),
         ),
       ),
     );
@@ -605,6 +639,24 @@ class _CyberAddTaskDialogState extends State<_CyberAddTaskDialog> {
   final _destController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _checkClipboard();
+    _destController.text = '/storage/emulated/0/Download/';
+  }
+
+  Future<void> _checkClipboard() async {
+    try {
+        final data = await Clipboard.getData(Clipboard.kTextPlain);
+        if (data?.text != null && (data!.text!.startsWith('http') || data.text!.startsWith('www'))) {
+            setState(() {
+                _urlController.text = data.text!;
+            });
+        }
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -714,6 +766,49 @@ class _CyberLogDialog extends StatelessWidget {
             const SizedBox(height: 12),
             _CyberMiniButton(icon: Icons.close, color: kNeonYellow, onPressed: () => Navigator.pop(context)),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CyberDetailDialog extends StatelessWidget {
+  final Task task;
+  const _CyberDetailDialog({required this.task});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: ShapeDecoration(
+          color: kCyberBlack,
+          shape: const BeveledRectangleBorder(
+            side: BorderSide(color: kNeonCyan, width: 2),
+            borderRadius: BorderRadius.all(Radius.circular(15)),
+          ),
+        ),
+        child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+                const Text('DATA LOG', style: TextStyle(color: kNeonCyan, fontSize: 18, fontWeight: FontWeight.bold)),
+                const Divider(color: kNeonCyan),
+                const SizedBox(height: 8),
+                Text('URL: ${task.url}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(height: 8),
+                Text('DEST: ${task.destPath}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(height: 8),
+                Text('SIZE: ${(task.totalBytes / 1024 / 1024).toStringAsFixed(2)} MB', style: const TextStyle(color: kNeonYellow)),
+                if (task.error != null)
+                    Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text('ERROR: ${task.error}', style: const TextStyle(color: kNeonPink)),
+                    ),
+                const SizedBox(height: 16),
+                Center(child: _CyberButton(label: 'CLOSE', icon: Icons.close, onPressed: () => Navigator.pop(context))),
+            ],
         ),
       ),
     );

@@ -183,6 +183,11 @@ pub extern "C" fn idm_engine_cancel_task(ptr: *mut EngineHandle, id: *const c_ch
     control_task(ptr, id, |engine, task_id| engine.cancel_task(task_id))
 }
 
+#[no_mangle]
+pub extern "C" fn idm_engine_remove_task(ptr: *mut EngineHandle, id: *const c_char) -> i32 {
+    control_task(ptr, id, |engine, task_id| engine.remove_task(task_id))
+}
+
 fn control_task<F>(ptr: *mut EngineHandle, id: *const c_char, f: F) -> i32
 where
     F: FnOnce(&DownloadEngine, &TaskId) -> Result<(), idm_core::CoreError>,

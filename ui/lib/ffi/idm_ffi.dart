@@ -25,6 +25,8 @@ class IdmCore {
       _lib.lookupFunction<_EngineResumeNative, _EngineResume>('idm_engine_resume_task');
   late final _EngineCancel _engineCancel =
       _lib.lookupFunction<_EngineCancelNative, _EngineCancel>('idm_engine_cancel_task');
+  late final _EngineRemove _engineRemove =
+      _lib.lookupFunction<_EngineRemoveNative, _EngineRemove>('idm_engine_remove_task');
   late final _EngineEnqueueQueued _engineEnqueueQueued = _lib
       .lookupFunction<_EngineEnqueueQueuedNative, _EngineEnqueueQueued>(
           'idm_engine_enqueue_queued');
@@ -84,6 +86,7 @@ class IdmCore {
   bool pauseTask(String id) => _controlTask(id, _enginePause);
   bool resumeTask(String id) => _controlTask(id, _engineResume);
   bool cancelTask(String id) => _controlTask(id, _engineCancel);
+  bool removeTask(String id) => _controlTask(id, _engineRemove);
 
   bool _controlTask(String id, _EngineControl fn) {
     final idPtr = id.toNativeUtf8();
@@ -139,6 +142,9 @@ typedef _EngineResume = int Function(Pointer<Void>, Pointer<Utf8>);
 
 typedef _EngineCancelNative = Int32 Function(Pointer<Void>, Pointer<Utf8>);
 typedef _EngineCancel = int Function(Pointer<Void>, Pointer<Utf8>);
+
+typedef _EngineRemoveNative = Int32 Function(Pointer<Void>, Pointer<Utf8>);
+typedef _EngineRemove = int Function(Pointer<Void>, Pointer<Utf8>);
 
 typedef _EngineControl = int Function(Pointer<Void>, Pointer<Utf8>);
 

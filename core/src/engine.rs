@@ -185,6 +185,23 @@ impl DownloadEngine {
         Ok(())
     }
 
+    pub fn remove_task(&self, id: &TaskId) -> CoreResult<()> {
+        if let Ok(active) = self.active.lock() {
+            if active.contains(id) {
+                return Err(CoreError::InvalidState(format!(
+                    "cannot remove active task {}",
+                    id
+                )));
+            }
+        }
+        let mut storage = self
+            .storage
+            .lock()
+            .map_err(|_| CoreError::Storage("storage lock poisoned".to_string()))?;
+        storage.delete_task(id)?;
+        Ok(())
+    }
+
     pub fn start_next(&self) -> CoreResult<Option<TaskId>> {
         let active_count = self
             .active
@@ -207,7 +224,11 @@ impl DownloadEngine {
             .storage
             .lock()
             .map_err(|_| CoreError::Storage("storage lock poisoned".to_string()))?;
-        let mut task = storage.load_task(&item.id)?;
+        let mut task = match storage.load_task(&item.id) {
+            Ok(t) => t,
+            Err(CoreError::NotFound(_)) => return self.start_next(),
+            Err(e) => return Err(e),
+        };
         if task.status != TaskStatus::Queued {
             return Ok(None);
         }
