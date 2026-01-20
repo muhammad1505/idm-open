@@ -1,0 +1,19 @@
+{
+  "manifest_version": 2,
+  "name": "IDM-Open",
+  "version": "0.1.0",
+  "description": "Send downloads to IDM-Open",
+  "permissions": ["contextMenus", "nativeMessaging", "downloads", "storage", "<all_urls>"],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "applications": {
+    "gecko": {
+      "id": "idm-open@example.com"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "IDM-Open",
+  "version": "0.1.0",
+  "description": "Send downloads to IDM-Open",
+  "permissions": ["contextMenus", "nativeMessaging", "downloads", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html"
+}

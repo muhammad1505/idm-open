@@ -1,0 +1,14 @@
+[Unit]
+Description=IDM-Open Download Daemon
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=IDM_DB=%h/.idm-open/idm.db
+Environment=IDM_DOWNLOAD_DIR=%h/Downloads
+ExecStart=%h/.local/bin/idm-daemon --interval 2
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

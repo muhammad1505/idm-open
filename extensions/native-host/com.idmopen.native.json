@@ -1,0 +1,9 @@
+{
+  "name": "com.idmopen.native",
+  "description": "IDM-Open native messaging host",
+  "path": "/path/to/idm-native-host",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://YOUR_EXTENSION_ID/"
+  ]
+}
