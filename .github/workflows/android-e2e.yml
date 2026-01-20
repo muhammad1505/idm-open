@@ -1,0 +1,97 @@
+name: Android E2E Test & Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  e2e-test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager "ndk;26.1.10909125"
+          yes | sdkmanager --licenses
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> "$GITHUB_ENV"
+          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> "$GITHUB_ENV"
+
+      - name: Install Rust Targets
+        run: |
+          rustup target add x86_64-linux-android aarch64-linux-android
+          cargo install cargo-ndk
+
+      - name: Prepare Flutter Project
+        run: |
+          mkdir -p ui_app
+          cp -r ui/* ui_app/
+          cd ui_app
+          flutter create --platforms android --project-name idm_open --org com.idmopen .
+          
+          # Inject Permissions
+          manifest="android/app/src/main/AndroidManifest.xml"
+          sed -i '/<application/ i\    <uses-permission android:name="android.permission.INTERNET"/>' "$manifest"
+          sed -i '/<application/ i\    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>' "$manifest"
+          sed -i '/<application/ i\    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>' "$manifest"
+          
+          # Fix minSdk for permission_handler (usually needs 19 or 21)
+          # sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/' android/app/build.gradle
+          # Easier: Just replace it
+          sed -i 's/minSdkVersion .*/minSdkVersion 21/' android/app/build.gradle
+
+      - name: Build Rust FFI (x86_64 for Emulator)
+        run: |
+          cargo ndk -t x86_64 -o ui_app/android/app/src/main/jniLibs build -p idm-core-ffi --release
+
+      - name: Build Rust FFI (arm64 for Release)
+        run: |
+          cargo ndk -t arm64-v8a -o ui_app/android/app/src/main/jniLibs build -p idm-core-ffi --release
+
+      - name: Run Integration Test (Emulator)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          script: |
+            # Attempt to grant permissions in background once app is installed
+            (
+              echo "Waiting for app to install..."
+              sleep 30
+              echo "Granting permissions..."
+              adb shell pm grant com.idmopen android.permission.WRITE_EXTERNAL_STORAGE || true
+              adb shell pm grant com.idmopen android.permission.READ_EXTERNAL_STORAGE || true
+            ) &
+            
+            cd ui_app
+            flutter test integration_test/app_test.dart
+
+      - name: Build Release APK
+        if: success()
+        run: |
+          cd ui_app
+          flutter build apk --release
+
+      - name: Upload Release APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: idm-open-release-apk
+          path: ui_app/build/app/outputs/flutter-apk/app-release.apk
