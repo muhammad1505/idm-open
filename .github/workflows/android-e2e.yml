@@ -75,15 +75,9 @@ jobs:
           target: default
           arch: x86_64
           script: |
-            # Attempt to grant permissions in background once app is installed
-            (
-              echo "Waiting for app to install..."
-              sleep 30
-              echo "Granting permissions..."
-              adb shell pm grant com.idmopen android.permission.WRITE_EXTERNAL_STORAGE || true
-              adb shell pm grant com.idmopen android.permission.READ_EXTERNAL_STORAGE || true
-            ) &
-            
+            # Background task to grant permissions after app install (approx 45s)
+            nohup sh -c "sleep 45 && adb shell pm grant com.idmopen android.permission.WRITE_EXTERNAL_STORAGE && adb shell pm grant com.idmopen android.permission.READ_EXTERNAL_STORAGE" >/dev/null 2>&1 &
+
             cd ui_app
             flutter test integration_test/app_test.dart
 
