@@ -252,6 +252,27 @@ class _IdmAppState extends State<IdmApp> {
     );
   }
 
+  Future<void> _resetData() async {
+    _log('Initiating Factory Reset...');
+    try {
+      _core?.dispose();
+      _core = null;
+      final dir = await getApplicationDocumentsDirectory();
+      final dbFile = File('${dir.path}/idm_open/idm.db');
+      if (await dbFile.exists()) {
+        await dbFile.delete();
+        _log('Database purged.');
+      }
+      _log('Rebooting Core...');
+      await _initCore();
+      if (!mounted) return;
+      Navigator.pop(context); // Close dialog
+      _showSnack(context, 'SYSTEM RESET COMPLETE');
+    } catch (e) {
+      _log('Reset failed: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -293,7 +314,10 @@ class _IdmAppState extends State<IdmApp> {
                           onPressed: () {
                             showDialog(
                               context: context,
-                              builder: (context) => _CyberLogDialog(log: _statusLog),
+                              builder: (context) => _CyberLogDialog(
+                                log: _statusLog,
+                                onReset: _resetData,
+                              ),
                             );
                           },
                         ),
@@ -738,14 +762,16 @@ class _CyberTextField extends StatelessWidget {
 
 class _CyberLogDialog extends StatelessWidget {
   final String log;
-  const _CyberLogDialog({required this.log});
+  final VoidCallback? onReset;
+
+  const _CyberLogDialog({required this.log, this.onReset});
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        height: 400,
+        height: 500,
         padding: const EdgeInsets.all(16),
         decoration: ShapeDecoration(
           color: Colors.black,
@@ -764,6 +790,19 @@ class _CyberLogDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
+            if (onReset != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kNeonPink,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: onReset,
+                  icon: const Icon(Icons.delete_forever),
+                  label: const Text('FACTORY RESET (FIX DB)'),
+                ),
+              ),
             _CyberMiniButton(icon: Icons.close, color: kNeonYellow, onPressed: () => Navigator.pop(context)),
           ],
         ),
