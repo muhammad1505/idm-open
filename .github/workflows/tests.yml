@@ -1,0 +1,26 @@
+name: Run Tests
+
+on:
+  push:
+    paths:
+      - "core/**"
+      - "core-ffi/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/tests.yml"
+  pull_request:
+    paths:
+      - "core/**"
+      - "core-ffi/**"
+
+jobs:
+  test-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Core Tests
+        run: cargo test -p idm-core

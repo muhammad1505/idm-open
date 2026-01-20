@@ -11,6 +11,9 @@ pub mod storage;
 pub mod task;
 pub mod throttle;
 
+#[cfg(test)]
+mod tests;
+
 pub use crate::engine::DownloadEngine;
 pub use crate::error::CoreError;
 pub use crate::task::{Task, TaskId, TaskStatus};
