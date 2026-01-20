@@ -50,10 +50,15 @@ jobs:
           sed -i '/<application/ i\    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>' "$manifest"
           sed -i '/<application/ i\    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>' "$manifest"
           
-          # Fix minSdk for permission_handler (usually needs 19 or 21)
-          # sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/' android/app/build.gradle
-          # Easier: Just replace it
-          sed -i 's/minSdkVersion .*/minSdkVersion 21/' android/app/build.gradle
+          # Fix minSdk for permission_handler (needs 21+)
+          if [ -f "android/app/build.gradle" ]; then
+            sed -i 's/minSdkVersion .*/minSdkVersion 21/' android/app/build.gradle
+          elif [ -f "android/app/build.gradle.kts" ]; then
+            # Kotlin DSL usually uses: minSdk = ... or minSdkVersion(21)
+            # Flutter template uses: minSdkVersion = flutter.minSdkVersion
+            # We replace it with 21
+            sed -i 's/minSdk.*/minSdk = 21/' android/app/build.gradle.kts
+          fi
 
       - name: Build Rust FFI (x86_64 for Emulator)
         run: |
