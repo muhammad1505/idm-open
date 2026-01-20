@@ -1,0 +1,86 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ui/**"
+      - "core/**"
+      - "core-ffi/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/android-apk.yml"
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager "ndk;26.1.10909125"
+          yes | sdkmanager --licenses
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> "$GITHUB_ENV"
+          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> "$GITHUB_ENV"
+
+      - name: Install Rust Android target + cargo-ndk
+        run: |
+          rustup target add aarch64-linux-android
+          cargo install cargo-ndk
+
+      - name: Prepare Flutter project
+        run: |
+          rm -rf ui_build
+          mkdir ui_build
+          cp -R ui/. ui_build/
+          cd ui_build
+          flutter create --platforms android --project-name idm_open --org com.idmopen --overwrite .
+          rm -rf lib
+          cp -R ../ui/lib ./lib
+          cp ../ui/pubspec.yaml ./pubspec.yaml
+          manifest="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "android.permission.INTERNET" "$manifest"; then
+            sed -i '/<application/ i\    <uses-permission android:name="android.permission.INTERNET"/>' "$manifest"
+          fi
+
+      - name: Build core-ffi for Android (arm64)
+        run: |
+          cargo ndk -t arm64-v8a -o ui_build/android/app/src/main/jniLibs build -p idm-core-ffi --release
+
+      - name: Flutter pub get
+        run: |
+          cd ui_build
+          flutter pub get
+
+      - name: Build APK (debug)
+        run: |
+          cd ui_build
+          flutter build apk --debug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: idm-open-debug-apk
+          path: ui_build/build/app/outputs/flutter-apk/app-debug.apk

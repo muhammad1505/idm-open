@@ -10,8 +10,15 @@ flutter pub get
 
 ## Build (Android)
 ```
-flutter build apk
+cd ui
+flutter create --platforms android --project-name idm_open --org com.idmopen --overwrite .
+flutter pub get
+flutter build apk --debug
 ```
+
+## CI build
+GitHub Actions workflow `Build Android APK` builds a debug APK and uploads it as
+the `idm-open-debug-apk` artifact.
 
 ## FFI notes
 - Android/Linux uses `libidm_core_ffi.so`
