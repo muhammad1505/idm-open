@@ -7,6 +7,6 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-idm-core = { path = "../core" }
+idm-core = { path = "../core", features = ["sqlite"] }
 libc = "0.2"
 serde_json = "1"
