@@ -50,6 +50,25 @@ class _IdmAppState extends State<IdmApp> {
     }
   }
 
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  bool _ensureCore() {
+    if (_core != null) {
+      return true;
+    }
+    if (_error != null) {
+      _showSnack('Core belum siap: $_error');
+    } else {
+      _showSnack('Core belum siap, coba lagi sebentar.');
+    }
+    return false;
+  }
+
   Future<String> _resolveDbPath() async {
     final dir = await getApplicationDocumentsDirectory();
     final dbDir = Directory('${dir.path}/idm_open');
@@ -85,10 +104,10 @@ class _IdmAppState extends State<IdmApp> {
   }
 
   Future<void> _addTask() async {
-    final core = _core;
-    if (core == null) {
+    if (!_ensureCore()) {
       return;
     }
+    final core = _core!;
     final result = await showDialog<_AddTaskResult>(
       context: context,
       builder: (context) => const _AddTaskDialog(),
@@ -112,36 +131,43 @@ class _IdmAppState extends State<IdmApp> {
   }
 
   void _enqueue() {
-    final core = _core;
-    if (core == null) {
+    if (!_ensureCore()) {
       return;
     }
-    core.enqueueQueued();
+    _core!.enqueueQueued();
     _refresh();
   }
 
   void _startNext() {
-    final core = _core;
-    if (core == null) {
+    if (!_ensureCore()) {
       return;
     }
-    core.enqueueQueued();
-    core.startNext();
+    _core!.enqueueQueued();
+    _core!.startNext();
     _refresh();
   }
 
   void _pause(Task task) {
-    _core?.pauseTask(task.id);
+    if (!_ensureCore()) {
+      return;
+    }
+    _core!.pauseTask(task.id);
     _refresh();
   }
 
   void _resume(Task task) {
-    _core?.resumeTask(task.id);
+    if (!_ensureCore()) {
+      return;
+    }
+    _core!.resumeTask(task.id);
     _refresh();
   }
 
   void _cancel(Task task) {
-    _core?.cancelTask(task.id);
+    if (!_ensureCore()) {
+      return;
+    }
+    _core!.cancelTask(task.id);
     _refresh();
   }
 
@@ -171,7 +197,24 @@ class _IdmAppState extends State<IdmApp> {
           ],
         ),
         body: _error != null
-            ? Center(child: Text(_error!))
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Core gagal diinisialisasi'),
+                      const SizedBox(height: 8),
+                      Text(_error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                        onPressed: _initCore,
+                        child: const Text('Coba lagi'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
             : _tasks.isEmpty
                 ? const Center(child: Text('Belum ada task'))
                 : ListView.builder(

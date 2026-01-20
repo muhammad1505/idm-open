@@ -20,6 +20,10 @@ flutter build apk --debug
 GitHub Actions workflow `Build Android APK` builds a debug APK and uploads it as
 the `idm-open-debug-apk` artifact.
 
+If the app shows "Core gagal diinisialisasi", check device ABI with
+`getprop ro.product.cpu.abi` and ensure the APK contains the matching ABI
+(arm64-v8a or armeabi-v7a).
+
 ## FFI notes
 - Android/Linux uses `libidm_core_ffi.so`
 - Windows uses `idm_core_ffi.dll`
