@@ -6,6 +6,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'ffi/idm_ffi.dart';
 import 'models/task.dart';
@@ -54,6 +55,12 @@ class _IdmAppState extends State<IdmApp> {
   }
 
   Future<void> _initCore() async {
+    _log('Requesting Permissions...');
+    await [
+      Permission.storage,
+      Permission.manageExternalStorage, // For Android 11+
+    ].request();
+
     _log('Mounting Core Systems...');
     try {
       final dbPath = await _resolveDbPath();
