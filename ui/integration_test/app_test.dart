@@ -52,5 +52,9 @@ void main() {
     
     // 7. Verify Status (Active/Queued)
     expect(find.textContaining('%'), findsOneWidget);
+
+    // Clean up focus to avoid post-test FocusManager disposal assertions.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump(const Duration(milliseconds: 200));
   });
 }
