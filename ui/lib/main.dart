@@ -55,11 +55,8 @@ class _IdmAppState extends State<IdmApp> {
   }
 
   Future<void> _initCore() async {
-    _log('Requesting Permissions...');
-    await [
-      Permission.storage,
-      Permission.manageExternalStorage,
-    ].request();
+    // Request permissions in background, don't block init
+    _requestPermissions();
 
     _log('Mounting Core Systems...');
     try {
@@ -86,6 +83,15 @@ class _IdmAppState extends State<IdmApp> {
         _error = err.toString();
       });
     }
+  }
+
+  Future<void> _requestPermissions() async {
+    _log('Requesting Permissions...');
+    await [
+      Permission.storage,
+      Permission.manageExternalStorage,
+    ].request();
+    _log('Permissions processed.');
   }
 
   Future<String> _resolveDbPath() async {
@@ -605,10 +611,18 @@ class _CyberButton extends StatelessWidget {
       onPressed: onPressed,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min, // Use min size to shrink-wrap
         children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 4), // Reduced spacing
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)), // Reduced font size
+          Icon(icon, size: 18),
+          const SizedBox(width: 4),
+          Flexible( // Prevent overflow
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+            ),
+          ),
         ],
       ),
     );
