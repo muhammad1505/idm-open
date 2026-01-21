@@ -75,10 +75,10 @@ jobs:
           target: default
           arch: x86_64
           script: |
-            # Background task to grant permissions
-            nohup sh -c "sleep 45 && adb shell pm grant com.idmopen android.permission.WRITE_EXTERNAL_STORAGE && adb shell pm grant com.idmopen android.permission.READ_EXTERNAL_STORAGE" >/dev/null 2>&1 &
+            # Smart background task: Wait for app install, then grant permissions
+            nohup sh -c "while ! adb shell pm list packages | grep -q com.idmopen; do sleep 2; done; sleep 5; adb shell pm grant com.idmopen android.permission.WRITE_EXTERNAL_STORAGE; adb shell pm grant com.idmopen android.permission.READ_EXTERNAL_STORAGE" >/dev/null 2>&1 &
 
-            # Run test in the correct directory
+            # Run test
             cd ui_app && flutter test integration_test/app_test.dart
 
       - name: Build Release APK
