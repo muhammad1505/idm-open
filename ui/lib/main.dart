@@ -57,6 +57,18 @@ class _IdmAppState extends State<IdmApp> {
     });
   }
 
+  void _showAppDialog(WidgetBuilder builder) {
+    final dialogContext = _navKey.currentContext;
+    if (dialogContext == null) {
+      _log('Dialog context unavailable.');
+      return;
+    }
+    showDialog(
+      context: dialogContext,
+      builder: builder,
+    );
+  }
+
   Future<void> _initCore() async {
     // Request permissions in background, don't block init
     _requestPermissions();
@@ -342,9 +354,8 @@ class _IdmAppState extends State<IdmApp> {
                           icon: Icons.bug_report,
                           color: kNeonYellow,
                           onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => _CyberLogDialog(
+                            _showAppDialog(
+                              (context) => _CyberLogDialog(
                                 log: _statusLog,
                                 onReset: _resetData,
                               ),
