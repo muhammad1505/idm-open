@@ -16,6 +16,7 @@
 ```bash
 # Build Rust components
 cargo build -p idm-core
+cargo build -p idm-core-ffi
 cargo build -p idm-cli
 cargo build -p idm-daemon
 
@@ -29,23 +30,34 @@ IDM_DB=./idm.db cargo run -p idm-daemon -- --interval 2
 # Core tests
 cargo test -p idm-core
 
-# Flutter UI
-cd ui && flutter run
+# Flutter UI (dev)
+cd ui
+flutter pub get
+flutter run
+
+# Flutter integration test (device/emulator)
+cd ui
+flutter test integration_test/app_test.dart
+
+# Android debug APK
+cd ui
+flutter build apk --debug
 ```
 Packaging: `./scripts/package-linux.sh` (Linux) or `./scripts/package-windows.ps1` (Windows host).
 
 ## Coding Style & Naming Conventions
 - Rust is edition 2021; keep crate names `idm-core`, `idm-cli`, `idm-daemon`.
-- Prefer standard formatters: `cargo fmt` for Rust and `dart format`/`flutter format` for UI code.
+- Use standard formatters: `cargo fmt` for Rust and `dart format`/`flutter format` for UI code (2-space indent).
 - Keep FFI changes in sync: if core APIs change, update `core-ffi/` and any Dart bindings.
 
 ## Testing Guidelines
 - Rust tests live in `core/src/tests.rs` using `#[test]` and `test_*` function names.
+- Flutter integration tests live in `ui/integration_test/` (e.g., `app_test.dart`).
 - Add unit tests for new engine behavior; run `cargo test -p idm-core` before PRs.
 - No explicit coverage target is defined; focus on critical download paths.
 
 ## Commit & Pull Request Guidelines
-- Follow the existing Conventional Commit style when possible: `feat(ui): ...`, `fix(ci): ...`.
+- Follow the existing Conventional Commit style: `feat(ui): ...`, `fix(ci): ...`, `test(e2e): ...`, `ci: ...`.
 - PRs should include a brief summary, testing evidence (commands run), and linked issues.
 - For UI changes, include screenshots or a short screen recording.
 
