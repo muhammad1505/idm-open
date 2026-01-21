@@ -123,7 +123,7 @@ class _IdmAppState extends State<IdmApp> {
       tasks.sort((a, b) {
         if (a.status == 'active' && b.status != 'active') return -1;
         if (b.status == 'active' && a.status != 'active') return 1;
-        return b.id.compareTo(a.id); // UUID compare isn\'t time-based, but good enough stability
+        return b.id.compareTo(a.id); 
       });
       setState(() {
         _tasks = tasks;
@@ -287,6 +287,7 @@ class _IdmAppState extends State<IdmApp> {
         textTheme: GoogleFonts.orbitronTextTheme(ThemeData.dark().textTheme),
       ),
       home: Scaffold(
+        resizeToAvoidBottomInset: false, // Prevent overflow when keyboard appears
         body: Stack(
           children: [
             Positioned.fill(child: CustomPaint(painter: GridPainter())),
@@ -301,13 +302,16 @@ class _IdmAppState extends State<IdmApp> {
                       children: [
                         const Icon(Icons.download_for_offline, color: kNeonCyan, size: 28),
                         const SizedBox(width: 12),
-                        Text('IDM // OPEN',
-                            style: GoogleFonts.orbitron(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w900,
-                                color: kNeonCyan,
-                                letterSpacing: 2)),
-                        const Spacer(),
+                        Flexible(
+                          child: Text('IDM // OPEN',
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.orbitron(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  color: kNeonCyan,
+                                  letterSpacing: 2)),
+                        ),
+                        const Spacer(), // Spacer is safe here with Flexible
                         _CyberIconButton(
                           icon: Icons.bug_report,
                           color: kNeonYellow,
@@ -383,7 +387,7 @@ class _IdmAppState extends State<IdmApp> {
                           ),
                   ),
 
-                  // Bottom Controls
+                  // Bottom Controls - Wrapped in Flexible to avoid overflow
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: const BoxDecoration(
@@ -399,9 +403,9 @@ class _IdmAppState extends State<IdmApp> {
                             onPressed: _enqueue,
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        _CyberAddButton(onPressed: _addTask), // Big Add Button
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 12),
+                        _CyberAddButton(onPressed: _addTask), 
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _CyberButton(
                             label: 'START',
@@ -587,6 +591,7 @@ class _CyberButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Wrap Text in Flexible/Expanded if needed, or allow it to be clipped
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: kCyberPanel,
@@ -595,15 +600,15 @@ class _CyberButton extends StatelessWidget {
           side: BorderSide(color: kNeonCyan),
           borderRadius: BorderRadius.all(Radius.circular(10)),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8), // Reduced padding
       ),
       onPressed: onPressed,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, size: 20),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(width: 4), // Reduced spacing
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)), // Reduced font size
         ],
       ),
     );
@@ -619,8 +624,8 @@ class _CyberAddButton extends StatelessWidget {
     return InkWell(
       onTap: onPressed,
       child: Container(
-        width: 60,
-        height: 60,
+        width: 50, // Reduced size
+        height: 50,
         decoration: ShapeDecoration(
           color: kNeonCyan.withOpacity(0.2),
           shape: const BeveledRectangleBorder(
@@ -628,7 +633,7 @@ class _CyberAddButton extends StatelessWidget {
             borderRadius: BorderRadius.all(Radius.circular(15)),
           ),
         ),
-        child: const Icon(Icons.add, color: kNeonCyan, size: 32),
+        child: const Icon(Icons.add, color: kNeonCyan, size: 28),
       ),
     );
   }

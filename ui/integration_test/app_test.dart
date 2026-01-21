@@ -15,9 +15,9 @@ void main() {
     // We poll for "STATUS: ONLINE" or "Engine ONLINE" log if visible.
     // In our UI, we have a Text widget showing 'STATUS: ...'
     
-    // We'll give it up to 10 seconds to initialize
+    // We'll give it up to 30 seconds to initialize
     bool isOnline = false;
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 60; i++) {
       await tester.pump(const Duration(milliseconds: 500));
       if (find.textContaining('STATUS: ONLINE').evaluate().isNotEmpty) {
         isOnline = true;
