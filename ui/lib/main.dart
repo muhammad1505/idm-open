@@ -14,6 +14,9 @@ import 'models/task.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!kUseGoogleFonts) {
+    GoogleFonts.config.allowRuntimeFetching = false;
+  }
   runApp(const IdmApp());
 }
 
@@ -24,6 +27,8 @@ const kCyberPanel = Color(0xFF1E1E2C);
 const kNeonCyan = Color(0xFF00F0FF);
 const kNeonPink = Color(0xFFFF0055);
 const kNeonYellow = Color(0xFFF0B429);
+const bool kUseGoogleFonts =
+    bool.fromEnvironment('USE_GOOGLE_FONTS', defaultValue: true);
 
 class IdmApp extends StatefulWidget {
   const IdmApp({super.key});
@@ -216,7 +221,8 @@ class _IdmAppState extends State<IdmApp> {
             msg,
             style: TextStyle(
               color: isError ? kNeonPink : kNeonCyan,
-              fontFamily: GoogleFonts.orbitron().fontFamily,
+              fontFamily:
+                  kUseGoogleFonts ? GoogleFonts.orbitron().fontFamily : null,
             ),
           ),
         ),
@@ -322,7 +328,9 @@ class _IdmAppState extends State<IdmApp> {
           secondary: kNeonPink,
           surface: kCyberPanel,
         ),
-        textTheme: GoogleFonts.orbitronTextTheme(ThemeData.dark().textTheme),
+        textTheme: kUseGoogleFonts
+            ? GoogleFonts.orbitronTextTheme(ThemeData.dark().textTheme)
+            : ThemeData.dark().textTheme,
       ),
       home: Scaffold(
         resizeToAvoidBottomInset: false, // Prevent overflow when keyboard appears
@@ -343,11 +351,17 @@ class _IdmAppState extends State<IdmApp> {
                         Flexible(
                           child: Text('IDM // OPEN',
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.orbitron(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  color: kNeonCyan,
-                                  letterSpacing: 2)),
+                              style: kUseGoogleFonts
+                                  ? GoogleFonts.orbitron(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w900,
+                                      color: kNeonCyan,
+                                      letterSpacing: 2)
+                                  : const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w900,
+                                      color: kNeonCyan,
+                                      letterSpacing: 2)),
                         ),
                         const Spacer(), // Spacer is safe here with Flexible
                         _CyberIconButton(
