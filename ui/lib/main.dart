@@ -1181,7 +1181,7 @@ class _IdmAppState extends State<IdmApp> {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
-                value: task.totalBytes > 0 ? progress : null,
+                value: task.totalBytes > 0 ? progress.toDouble() : null,
                 minHeight: 6,
                 backgroundColor: kCyberDark,
                 color: statusColor,
