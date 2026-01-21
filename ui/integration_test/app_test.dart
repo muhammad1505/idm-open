@@ -112,10 +112,13 @@ void main() {
     // 8. Cek aksi task (pause/resume jika ada, stop, lalu delete).
     final taskCard =
         find.ancestor(of: find.text(url), matching: find.byType(GestureDetector));
+    await tester.ensureVisible(taskCard);
+    await tester.pump(const Duration(milliseconds: 200));
     final pauseBtn =
         find.descendant(of: taskCard, matching: find.byIcon(Icons.pause));
     if (pauseBtn.evaluate().isNotEmpty) {
-      await tester.tap(pauseBtn.first);
+      await tester.ensureVisible(pauseBtn.first);
+      await tester.tap(pauseBtn.first, warnIfMissed: false);
       await tester.pump(const Duration(milliseconds: 400));
     }
     final resumeBtn = find.descendant(
@@ -123,19 +126,22 @@ void main() {
       matching: find.byIcon(Icons.play_arrow),
     );
     if (resumeBtn.evaluate().isNotEmpty) {
-      await tester.tap(resumeBtn.first);
+      await tester.ensureVisible(resumeBtn.first);
+      await tester.tap(resumeBtn.first, warnIfMissed: false);
       await tester.pump(const Duration(milliseconds: 400));
     }
     final stopBtn =
         find.descendant(of: taskCard, matching: find.byIcon(Icons.stop));
     expect(stopBtn, findsOneWidget);
-    await tester.tap(stopBtn.first);
+    await tester.ensureVisible(stopBtn.first);
+    await tester.tap(stopBtn.first, warnIfMissed: false);
     await tester.pump(const Duration(milliseconds: 400));
     final deleteBtn = find.descendant(
       of: taskCard,
       matching: find.byIcon(Icons.delete_outline),
     );
-    await tester.tap(deleteBtn.first);
+    await tester.ensureVisible(deleteBtn.first);
+    await tester.tap(deleteBtn.first, warnIfMissed: false);
     await _waitForGone(tester, find.text(url), timeout: const Duration(seconds: 20));
 
     // 9. Settings tab toggles.

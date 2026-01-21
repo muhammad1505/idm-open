@@ -1269,23 +1269,38 @@ class _IdmAppState extends State<IdmApp> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.download_for_offline, size: 64, color: kMutedText),
-          const SizedBox(height: 12),
-          Text(
-            'No downloads yet',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxHeight < 160;
+        final iconSize = compact ? 40.0 : 64.0;
+        final gap = compact ? 8.0 : 12.0;
+        return Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.download_for_offline, size: iconSize, color: kMutedText),
+                SizedBox(height: gap),
+                Text(
+                  'No downloads yet',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: compact ? 4 : 6),
+                Text(
+                  'Tap New Download to add a link',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: kMutedText),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Tap New Download to add a link',
-            style: TextStyle(color: kMutedText),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
