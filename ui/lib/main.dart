@@ -39,6 +39,9 @@ class _IdmAppState extends State<IdmApp> {
   String? _error;
   String _statusLog = '[SYSTEM BOOT]\nInitializing protocols...\n';
   String _dbPath = 'Locating...';
+  final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
+  final GlobalKey<ScaffoldMessengerState> _scaffoldKey =
+      GlobalKey<ScaffoldMessengerState>();
 
   @override
   void initState() {
@@ -144,9 +147,14 @@ class _IdmAppState extends State<IdmApp> {
       _log('Command Rejected: Core offline.');
       return;
     }
+    final dialogContext = _navKey.currentContext;
+    if (dialogContext == null) {
+      _log('Dialog context unavailable.');
+      return;
+    }
     final core = _core!;
     final result = await showDialog<_AddTaskResult>(
-      context: context,
+      context: dialogContext,
       barrierColor: kCyberBlack.withOpacity(0.8),
       builder: (context) => const _CyberAddTaskDialog(),
     );
@@ -158,20 +166,25 @@ class _IdmAppState extends State<IdmApp> {
       if (id == null) {
         _log('Injection Failed: Null response.');
         if (!mounted) return;
-        _showSnack(context, 'Injection Failed', isError: true);
+        _showSnack('Injection Failed', isError: true);
         return;
       }
       _log('Task Assigned ID: $id');
       if (!mounted) return;
-      _showSnack(context, 'Task Initiated');
+      _showSnack('Task Initiated');
       await _refresh();
     } catch (e) {
       _log('Exception during injection: $e');
     }
   }
 
-  void _showSnack(BuildContext context, String msg, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
+  void _showSnack(String msg, {bool isError = false}) {
+    final messenger = _scaffoldKey.currentState;
+    if (messenger == null) {
+      _log('Snack requested before messenger ready.');
+      return;
+    }
+    messenger.showSnackBar(
       SnackBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -247,13 +260,18 @@ class _IdmAppState extends State<IdmApp> {
       _refresh();
     } catch (e) {
       _log('Deletion failed: $e');
-      _showSnack(context, 'Deletion Failed: $e', isError: true);
+      _showSnack('Deletion Failed: $e', isError: true);
     }
   }
 
   void _showDetails(Task task) {
+    final dialogContext = _navKey.currentContext;
+    if (dialogContext == null) {
+      _log('Dialog context unavailable.');
+      return;
+    }
     showDialog(
-      context: context,
+      context: dialogContext,
       builder: (context) => _CyberDetailDialog(task: task),
     );
   }
@@ -272,8 +290,8 @@ class _IdmAppState extends State<IdmApp> {
       _log('Rebooting Core...');
       await _initCore();
       if (!mounted) return;
-      Navigator.pop(context); // Close dialog
-      _showSnack(context, 'SYSTEM RESET COMPLETE');
+      _navKey.currentState?.pop(); // Close dialog
+      _showSnack('SYSTEM RESET COMPLETE');
     } catch (e) {
       _log('Reset failed: $e');
     }
@@ -282,6 +300,8 @@ class _IdmAppState extends State<IdmApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navKey,
+      scaffoldMessengerKey: _scaffoldKey,
       title: 'IDM-Open: CYBER',
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: kCyberBlack,
