@@ -111,7 +111,12 @@ jobs:
             nohup sh -c "while ! adb shell pm list packages | grep -q com.idmopen; do sleep 2; done; sleep 5; adb shell pm grant com.idmopen android.permission.WRITE_EXTERNAL_STORAGE; adb shell pm grant com.idmopen android.permission.READ_EXTERNAL_STORAGE" >/dev/null 2>&1 &
 
             # Run test
-            cd ui_app && flutter test integration_test/app_test.dart --dart-define=USE_GOOGLE_FONTS=false --dart-define=ENABLE_PERMISSIONS=false > /tmp/flutter-test.log 2>&1 || true
+            bash -lc 'cd ui_app && set -o pipefail; timeout 25m flutter test integration_test/app_test.dart --dart-define=USE_GOOGLE_FONTS=false --dart-define=ENABLE_PERMISSIONS=false 2>&1 | tee /tmp/flutter-test.log; echo $? > /tmp/flutter-test.status'
+            test_status=$(cat /tmp/flutter-test.status 2>/dev/null || echo 1)
+            if [ "$test_status" -eq 124 ]; then
+              echo "flutter test timed out."
+              exit 1
+            fi
             cat /tmp/flutter-test.log
             if grep -qi "0 tests passed" /tmp/flutter-test.log; then
               exit 1
