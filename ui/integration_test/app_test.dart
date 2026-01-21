@@ -3,8 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:idm_open_ui/main.dart' as app;
 
+final IntegrationTestWidgetsFlutterBinding _binding =
+    IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  _binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
 
   testWidgets('Full App E2E Test', (tester) async {
     app.main();
