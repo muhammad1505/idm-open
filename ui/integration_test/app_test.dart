@@ -43,14 +43,14 @@ void main() {
     // 5. Tap Initiate
     final initiateBtn = find.text('INITIATE');
     await tester.tap(initiateBtn);
-    await tester.pumpAndSettle();
+    // Use pump with duration instead of pumpAndSettle because Timer.periodic prevents settling
+    await tester.pump(const Duration(seconds: 2));
 
     // 6. Verify Task Added to List
     // We look for the URL text in the list
     expect(find.text('https://example.com/test.zip'), findsOneWidget);
     
     // 7. Verify Status (Active/Queued)
-    // We expect some progress indicator or status text
     expect(find.textContaining('%'), findsOneWidget);
   });
 }
