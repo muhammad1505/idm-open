@@ -79,7 +79,7 @@ jobs:
             nohup sh -c "while ! adb shell pm list packages | grep -q com.idmopen; do sleep 2; done; sleep 5; adb shell pm grant com.idmopen android.permission.WRITE_EXTERNAL_STORAGE; adb shell pm grant com.idmopen android.permission.READ_EXTERNAL_STORAGE" >/dev/null 2>&1 &
 
             # Run test
-            cd ui_app && flutter test integration_test/app_test.dart --dart-define=USE_GOOGLE_FONTS=false
+            cd ui_app && flutter test integration_test/app_test.dart --dart-define=USE_GOOGLE_FONTS=false --dart-define=ENABLE_PERMISSIONS=false
 
       - name: Build Release APK
         if: success()

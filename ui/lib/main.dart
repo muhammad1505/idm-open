@@ -29,6 +29,8 @@ const kNeonPink = Color(0xFFFF0055);
 const kNeonYellow = Color(0xFFF0B429);
 const bool kUseGoogleFonts =
     bool.fromEnvironment('USE_GOOGLE_FONTS', defaultValue: true);
+const bool kEnablePermissions =
+    bool.fromEnvironment('ENABLE_PERMISSIONS', defaultValue: true);
 
 class IdmApp extends StatefulWidget {
   const IdmApp({super.key});
@@ -47,6 +49,7 @@ class _IdmAppState extends State<IdmApp> {
   final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
   final GlobalKey<ScaffoldMessengerState> _scaffoldKey =
       GlobalKey<ScaffoldMessengerState>();
+  Future<void>? _permissionsFuture;
 
   @override
   void initState() {
@@ -76,7 +79,11 @@ class _IdmAppState extends State<IdmApp> {
 
   Future<void> _initCore() async {
     // Request permissions in background, don't block init
-    _requestPermissions();
+    if (kEnablePermissions && _permissionsFuture == null) {
+      _permissionsFuture = _requestPermissions();
+    } else if (!kEnablePermissions) {
+      _log('Permission requests disabled by build flag.');
+    }
 
     _log('Mounting Core Systems...');
     try {
@@ -107,11 +114,15 @@ class _IdmAppState extends State<IdmApp> {
 
   Future<void> _requestPermissions() async {
     _log('Requesting Permissions...');
-    await [
-      Permission.storage,
-      Permission.manageExternalStorage,
-    ].request();
-    _log('Permissions processed.');
+    try {
+      await [
+        Permission.storage,
+        Permission.manageExternalStorage,
+      ].request();
+      _log('Permissions processed.');
+    } catch (e) {
+      _log('Permission request failed: $e');
+    }
   }
 
   Future<String> _resolveDbPath() async {
