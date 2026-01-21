@@ -434,6 +434,10 @@ impl ProgressTracker {
     }
 }
 
+use crate::hls::HlsDownloader;
+
+// ... imports ...
+
 fn download_task(
     task_id: TaskId,
     config: EngineConfig,
@@ -446,6 +450,31 @@ fn download_task(
             .map_err(|_| CoreError::Storage("storage lock poisoned".to_string()))?;
         storage.load_task(&task_id)?
     };
+
+    // --- HLS CHECK ---
+    if task.url.contains(".m3u8") {
+        let stop_flag = Arc::new(AtomicU8::new(STOP_NONE));
+        let storage_clone = storage.clone();
+        let tid = task_id;
+        
+        let status = HlsDownloader::download(
+            &mut task,
+            net,
+            stop_flag,
+            move |bytes| {
+                 if let Ok(mut s) = storage_clone.lock() {
+                     if let Ok(mut t) = s.load_task(&tid) {
+                         t.downloaded_bytes = bytes;
+                         // Hack: Update total bytes dynamically for HLS as we go
+                         if t.total_bytes < bytes { t.total_bytes = bytes; } 
+                         let _ = s.save_task(&t);
+                     }
+                 }
+            }
+        )?;
+        return Ok(status);
+    }
+    // --- END HLS CHECK ---
 
     let url_candidates = resolve_url_candidates(task.url_candidates());
     let mut total_bytes = task.total_bytes;

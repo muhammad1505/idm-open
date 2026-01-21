@@ -1,45 +1,28 @@
 use crate::error::{CoreError, CoreResult};
-use crate::task::{Task, TaskStatus};
-use std::sync::{Arc, Mutex};
+use lava_torrent::torrent::v1::Torrent;
+use std::path::Path;
 
-// Placeholder for a real Torrent Client (e.g., via librustorrent or rqbit)
-pub struct TorrentEngine {
-    // In a real impl, this would hold the session handle
-    active_torrents: Arc<Mutex<Vec<String>>>,
-}
+pub struct TorrentEngine;
 
 impl TorrentEngine {
     pub fn new() -> Self {
-        Self {
-            active_torrents: Arc::new(Mutex::new(Vec::new())),
-        }
+        Self
     }
 
-    pub fn add_magnet(&self, magnet_link: &str, save_path: &str) -> CoreResult<String> {
-        // validate magnet link
-        if !magnet_link.starts_with("magnet:?") {
-            return Err(CoreError::InvalidState("Invalid magnet link".to_string()));
-        }
-
-        // In a real implementation:
-        // 1. Parse magnet uri
-        // 2. Create a session
-        // 3. Add to session
+    pub fn parse_file(path: &str) -> CoreResult<TorrentInfo> {
+        let torrent = Torrent::read_from_file(path)
+            .map_err(|e| CoreError::Io(format!("Invalid torrent file: {:?}", e)))?;
         
-        // For now, we simulate success
-        let mut torrents = self.active_torrents.lock().unwrap();
-        torrents.push(magnet_link.to_string());
-        
-        Ok("torrent_task_id_placeholder".to_string())
+        Ok(TorrentInfo {
+            name: torrent.name,
+            length: torrent.length.unwrap_or(0) as u64,
+            info_hash: torrent.info_hash,
+        })
     }
+}
 
-    pub fn pause_torrent(&self, _id: &str) -> CoreResult<()> {
-        // Implement pause logic
-        Ok(())
-    }
-
-    pub fn resume_torrent(&self, _id: &str) -> CoreResult<()> {
-        // Implement resume logic
-        Ok(())
-    }
+pub struct TorrentInfo {
+    pub name: String,
+    pub length: u64,
+    pub info_hash: String,
 }

@@ -19,5 +19,4 @@ md-5 = "0.10"
 hex = "0.4"
 m3u8-rs = "5.0"
 url = "2.4"
-# Uncomment when ready to build with heavy dependencies
-# librustorrent = "0.9" 
+lava_torrent = "0.5"
