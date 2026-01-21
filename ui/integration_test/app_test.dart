@@ -79,20 +79,20 @@ void main() {
     await _waitForGone(tester, find.text('SYSTEM LOG'));
 
     // 4. Buka dialog tambah task lalu ABORT.
-    final addButton = find.byIcon(Icons.add);
+    final addButton = find.text('New Download');
     expect(addButton, findsOneWidget);
     await tester.tap(addButton);
-    await _waitForFinder(tester, find.text('NEW TARGET'));
-    await tester.tap(find.text('ABORT'));
-    await _waitForGone(tester, find.text('NEW TARGET'));
+    await _waitForFinder(tester, find.text('NEW DOWNLOAD'));
+    await tester.tap(find.text('CANCEL'));
+    await _waitForGone(tester, find.text('NEW DOWNLOAD'));
 
     // 5. Tambah task.
     await tester.tap(addButton);
-    await _waitForFinder(tester, find.text('NEW TARGET'));
+    await _waitForFinder(tester, find.text('NEW DOWNLOAD'));
     final url = 'https://example.com/test.zip';
-    final urlField = find.widgetWithText(TextField, 'URL SOURCE');
+    final urlField = find.widgetWithText(TextField, 'DOWNLOAD LINK');
     await tester.enterText(urlField, url);
-    await tester.tap(find.text('INITIATE'));
+    await tester.tap(find.text('ADD'));
     await _waitForFinder(tester, find.text(url), timeout: const Duration(seconds: 20));
 
     // 6. Buka detail task lalu tutup.
@@ -104,9 +104,9 @@ void main() {
     await _waitForGone(tester, find.text('DATA LOG'));
 
     // 7. Cek tombol enqueue dan start.
-    await tester.tap(find.text('ENQUEUE'));
+    await tester.tap(find.text('Queue all'));
     await tester.pump(const Duration(milliseconds: 200));
-    await tester.tap(find.text('START'));
+    await tester.tap(find.text('Start next'));
     await tester.pump(const Duration(milliseconds: 200));
 
     // 8. Cek aksi task (pause/resume jika ada, stop, lalu delete).
@@ -137,6 +137,20 @@ void main() {
     );
     await tester.tap(deleteBtn.first);
     await _waitForGone(tester, find.text(url), timeout: const Duration(seconds: 20));
+
+    // 9. Settings tab toggles.
+    await tester.tap(find.text('Settings'));
+    await _waitForFinder(tester, find.text('Smart download'));
+    await tester.tap(find.text('Smart download'));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // 10. Browser tab basic presence.
+    await tester.tap(find.text('Browser'));
+    await _waitForFinder(tester, find.text('Search or paste download link'));
+
+    // 11. Back to downloads.
+    await tester.tap(find.text('Downloads'));
+    await _waitForFinder(tester, find.textContaining('STATUS:'));
 
     // 9. Uji factory reset dari log dialog.
     await tester.tap(find.byIcon(Icons.bug_report));
