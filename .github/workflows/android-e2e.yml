@@ -111,17 +111,19 @@ jobs:
             nohup sh -c "while ! adb shell pm list packages | grep -q com.idmopen; do sleep 2; done; sleep 5; adb shell pm grant com.idmopen android.permission.WRITE_EXTERNAL_STORAGE; adb shell pm grant com.idmopen android.permission.READ_EXTERNAL_STORAGE" >/dev/null 2>&1 &
 
             # Run test
-            cd ui_app
-            flutter test integration_test/app_test.dart --dart-define=USE_GOOGLE_FONTS=false --dart-define=ENABLE_PERMISSIONS=false > /tmp/flutter-test.log 2>&1
-            test_status=$?
+            cd ui_app && flutter test integration_test/app_test.dart --dart-define=USE_GOOGLE_FONTS=false --dart-define=ENABLE_PERMISSIONS=false > /tmp/flutter-test.log 2>&1 || true
             cat /tmp/flutter-test.log
-            if [ "$test_status" -ne 0 ]; then
-              if grep -q "test passed" /tmp/flutter-test.log && ! grep -q "test failed" /tmp/flutter-test.log; then
-                echo "flutter test exited $test_status but reported pass; overriding to success."
-                exit 0
-              fi
+            if grep -qi "0 tests passed" /tmp/flutter-test.log; then
+              exit 1
             fi
-            exit "$test_status"
+            if grep -qi "test failed" /tmp/flutter-test.log; then
+              exit 1
+            fi
+            if grep -qi "test passed" /tmp/flutter-test.log || grep -qi "tests passed" /tmp/flutter-test.log; then
+              exit 0
+            fi
+            echo "No test summary found in flutter output."
+            exit 1
 
       - name: Build Release APK
         if: success() && (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/'))
