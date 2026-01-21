@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'ffi/idm_ffi.dart';
 import 'models/task.dart';
+import 'screens/browser.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,6 +75,7 @@ class _IdmAppState extends State<IdmApp> {
     'Paused',
     'Failed',
     'Completed',
+    'Torrents',
   ];
 
   @override
@@ -588,93 +590,28 @@ class _IdmAppState extends State<IdmApp> {
   }
 
   Widget _buildBrowserPage(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildHeader(
-            context,
-            title: 'Browser',
-            subtitle: 'Built-in preview',
-            actions: [
-              _buildHeaderAction(
-                icon: Icons.tab,
-                color: kNeonBlue,
-                onTap: () {},
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: kCyberPanel,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: kCyberDark),
+    return CyberBrowser(
+      onDownloadRequest: (url) {
+        _log('Browser requested download: $url');
+        // Show the add dialog pre-filled
+        final dialogContext = _navKey.currentContext;
+        if (dialogContext != null) {
+          showDialog<_AddTaskResult>(
+            context: dialogContext,
+            barrierColor: kCyberBlack.withOpacity(0.8),
+            builder: (context) => _CyberAddTaskDialog(
+              defaultPath: _downloadDir,
+              initialUrl: url,
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.search, color: kMutedText),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Search or paste download link',
-                    style: TextStyle(color: kMutedText.withOpacity(0.8)),
-                  ),
-                ),
-                const Icon(Icons.lock_outline, color: kMutedText, size: 18),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildPillAction(
-                  icon: Icons.bookmark_border,
-                  label: 'Bookmarks',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildPillAction(
-                  icon: Icons.history,
-                  label: 'History',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildPillAction(
-                  icon: Icons.visibility_off_outlined,
-                  label: 'Incognito',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: ListView(
-              children: [
-                _buildSectionTitle(context, 'Quick Sites'),
-                const SizedBox(height: 8),
-                _buildQuickSite('Google Drive', 'drive.google.com', Icons.cloud),
-                _buildQuickSite('Mediafire', 'mediafire.com', Icons.insert_drive_file),
-                _buildQuickSite('Pixeldrain', 'pixeldrain.com', Icons.bolt),
-                const SizedBox(height: 16),
-                _buildSectionTitle(context, 'Notes'),
-                const SizedBox(height: 8),
-                _buildInfoCard(
-                  context,
-                  title: 'Browser is in preview',
-                  body:
-                      'Add tabs, bookmarks, and sniff media links here. The download engine is already ready.',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+          ).then((result) {
+            if (result != null && _core != null) {
+               _core!.addTask(result.url, result.dest);
+               _showSnack('Download Started');
+               _refresh();
+            }
+          });
+        }
+      },
     );
   }
 
@@ -1744,9 +1681,10 @@ class _CyberIconButton extends StatelessWidget {
 }
 
 class _CyberAddTaskDialog extends StatefulWidget {
-  const _CyberAddTaskDialog({required this.defaultPath});
+  const _CyberAddTaskDialog({required this.defaultPath, this.initialUrl});
 
   final String defaultPath;
+  final String? initialUrl;
   @override
   State<_CyberAddTaskDialog> createState() => _CyberAddTaskDialogState();
 }
@@ -1758,7 +1696,11 @@ class _CyberAddTaskDialogState extends State<_CyberAddTaskDialog> {
   @override
   void initState() {
     super.initState();
-    _checkClipboard();
+    if (widget.initialUrl != null) {
+      _urlController.text = widget.initialUrl!;
+    } else {
+      _checkClipboard();
+    }
     _destController.text = widget.defaultPath;
   }
 
