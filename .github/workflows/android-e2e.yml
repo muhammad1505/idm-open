@@ -104,7 +104,7 @@ jobs:
       - name: Run Integration Test (Emulator)
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 24
+          api-level: 28
           target: default
           arch: x86_64
           script: |
