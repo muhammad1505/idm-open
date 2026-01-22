@@ -47,6 +47,18 @@ Future<void> _waitForGone(
   expect(finder, findsNothing);
 }
 
+Future<void> _tapSafe(
+  WidgetTester tester,
+  Finder finder, {
+  Duration settle = const Duration(milliseconds: 200),
+}) async {
+  await tester.ensureVisible(finder);
+  await tester.pump(settle);
+  final rect = tester.getRect(finder);
+  await tester.tapAt(rect.topLeft + const Offset(16, 16));
+  await tester.pump(settle);
+}
+
 void main() {
   _binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
 
@@ -99,9 +111,7 @@ void main() {
     final taskText = find.text(url);
     final taskCard =
         find.ancestor(of: taskText, matching: find.byType(GestureDetector));
-    await tester.ensureVisible(taskCard);
-    await tester.pump(const Duration(milliseconds: 200));
-    await tester.tap(taskCard);
+    await _tapSafe(tester, taskCard);
     await _waitForFinder(tester, find.text('DATA LOG'));
     expect(find.textContaining('URL:'), findsOneWidget);
     expect(find.textContaining('DEST:'), findsOneWidget);
@@ -120,8 +130,7 @@ void main() {
     final pauseBtn =
         find.descendant(of: taskCard, matching: find.byIcon(Icons.pause));
     if (pauseBtn.evaluate().isNotEmpty) {
-      await tester.ensureVisible(pauseBtn.first);
-      await tester.tap(pauseBtn.first, warnIfMissed: false);
+      await _tapSafe(tester, pauseBtn.first);
       await tester.pump(const Duration(milliseconds: 400));
     }
     final resumeBtn = find.descendant(
@@ -129,22 +138,19 @@ void main() {
       matching: find.byIcon(Icons.play_arrow),
     );
     if (resumeBtn.evaluate().isNotEmpty) {
-      await tester.ensureVisible(resumeBtn.first);
-      await tester.tap(resumeBtn.first, warnIfMissed: false);
+      await _tapSafe(tester, resumeBtn.first);
       await tester.pump(const Duration(milliseconds: 400));
     }
     final stopBtn =
         find.descendant(of: taskCard, matching: find.byIcon(Icons.stop));
     expect(stopBtn, findsOneWidget);
-    await tester.ensureVisible(stopBtn.first);
-    await tester.tap(stopBtn.first, warnIfMissed: false);
+    await _tapSafe(tester, stopBtn.first);
     await tester.pump(const Duration(milliseconds: 400));
     final deleteBtn = find.descendant(
       of: taskCard,
       matching: find.byIcon(Icons.delete_outline),
     );
-    await tester.ensureVisible(deleteBtn.first);
-    await tester.tap(deleteBtn.first, warnIfMissed: false);
+    await _tapSafe(tester, deleteBtn.first);
     await _waitForGone(tester, find.text(url), timeout: const Duration(seconds: 20));
 
     // 9. Settings tab toggles.
