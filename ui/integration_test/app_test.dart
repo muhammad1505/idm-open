@@ -105,6 +105,11 @@ void main() {
     final urlField = find.widgetWithText(TextField, 'DOWNLOAD LINK');
     await tester.enterText(urlField, url);
     await tester.tap(find.text('ADD'));
+    await _waitForGone(
+      tester,
+      find.text('NEW DOWNLOAD'),
+      timeout: const Duration(seconds: 20),
+    );
     await _waitForFinder(tester, find.text(url), timeout: const Duration(seconds: 20));
 
     // 6. Buka detail task lalu tutup.
