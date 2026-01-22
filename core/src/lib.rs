@@ -10,9 +10,11 @@ pub mod scheduler;
 pub mod segment;
 pub mod storage;
 pub mod task;
-pub mod tests;
 pub mod throttle;
 pub mod torrent;
+
+#[cfg(test)]
+pub mod tests;
 
 
 pub use crate::engine::DownloadEngine;

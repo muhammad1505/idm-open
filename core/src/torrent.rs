@@ -1,6 +1,5 @@
 use crate::error::{CoreError, CoreResult};
 use lava_torrent::torrent::v1::Torrent;
-use std::path::Path;
 
 pub struct TorrentEngine;
 
@@ -13,10 +12,13 @@ impl TorrentEngine {
         let torrent = Torrent::read_from_file(path)
             .map_err(|e| CoreError::Io(format!("Invalid torrent file: {:?}", e)))?;
         
+        // Calculate hash BEFORE moving fields (like torrent.name)
+        let hash = torrent.info_hash();
+
         Ok(TorrentInfo {
             name: torrent.name,
             length: torrent.length,
-            info_hash: torrent.info_hash(),
+            info_hash: hash,
         })
     }
 }

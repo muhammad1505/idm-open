@@ -4,7 +4,7 @@ use crate::task::{Task, TaskStatus};
 use m3u8_rs::Playlist;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::thread;
 use std::time::Duration;
