@@ -97,9 +97,11 @@ void main() {
 
     // 6. Buka detail task lalu tutup.
     final taskText = find.text(url);
-    await tester.ensureVisible(taskText);
+    final taskCard =
+        find.ancestor(of: taskText, matching: find.byType(GestureDetector));
+    await tester.ensureVisible(taskCard);
     await tester.pump(const Duration(milliseconds: 200));
-    await tester.tap(taskText, warnIfMissed: false);
+    await tester.tap(taskCard);
     await _waitForFinder(tester, find.text('DATA LOG'));
     expect(find.textContaining('URL:'), findsOneWidget);
     expect(find.textContaining('DEST:'), findsOneWidget);
@@ -113,8 +115,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     // 8. Cek aksi task (pause/resume jika ada, stop, lalu delete).
-    final taskCard =
-        find.ancestor(of: find.text(url), matching: find.byType(GestureDetector));
     await tester.ensureVisible(taskCard);
     await tester.pump(const Duration(milliseconds: 200));
     final pauseBtn =
