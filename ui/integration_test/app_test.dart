@@ -96,7 +96,10 @@ void main() {
     await _waitForFinder(tester, find.text(url), timeout: const Duration(seconds: 20));
 
     // 6. Buka detail task lalu tutup.
-    await tester.tap(find.text(url));
+    final taskText = find.text(url);
+    await tester.ensureVisible(taskText);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(taskText, warnIfMissed: false);
     await _waitForFinder(tester, find.text('DATA LOG'));
     expect(find.textContaining('URL:'), findsOneWidget);
     expect(find.textContaining('DEST:'), findsOneWidget);
