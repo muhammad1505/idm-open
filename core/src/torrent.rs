@@ -15,14 +15,14 @@ impl TorrentEngine {
         
         Ok(TorrentInfo {
             name: torrent.name,
-            length: torrent.length.unwrap_or(0) as u64,
-            info_hash: torrent.info_hash,
+            length: torrent.length,
+            info_hash: torrent.info_hash(),
         })
     }
 }
 
 pub struct TorrentInfo {
     pub name: String,
-    pub length: u64,
+    pub length: i64,
     pub info_hash: String,
 }

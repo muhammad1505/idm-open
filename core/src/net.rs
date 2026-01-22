@@ -44,6 +44,7 @@ pub struct DownloadResponse {
 
 pub trait NetClient: Send + Sync {
     fn head(&self, req: &DownloadRequest) -> CoreResult<DownloadResponse>;
+    fn get(&self, req: &DownloadRequest) -> CoreResult<Response>;
     fn get_stream(&self, req: &DownloadRequest) -> CoreResult<Response>;
 }
 
@@ -151,6 +152,10 @@ impl NetClient for ReqwestNetClient {
             content_type,
             content_disposition,
         })
+    }
+
+    fn get(&self, req: &DownloadRequest) -> CoreResult<Response> {
+        self.get_stream(req)
     }
 
     fn get_stream(&self, req: &DownloadRequest) -> CoreResult<Response> {

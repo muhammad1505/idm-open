@@ -1,14 +1,15 @@
 use crate::error::{CoreError, CoreResult};
 use crate::net::NetClient;
 use crate::task::{Task, TaskStatus};
-use m3u8_rs::{MasterPlaylist, Playlist};
+use m3u8_rs::Playlist;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::thread;
 use std::time::Duration;
 use url::Url;
+use bytes::Bytes;
 
 pub struct HlsDownloader;
 
@@ -24,7 +25,7 @@ impl HlsDownloader {
         req.headers = task.headers.clone();
         
         let response = net.get(&req)?;
-        let bytes = response.bytes();
+        let bytes: Bytes = response.bytes().map_err(|e| CoreError::Network(e.to_string()))?;
         
         let playlist = match m3u8_rs::parse_playlist(&bytes) {
             Ok((_, p)) => p,
@@ -52,7 +53,7 @@ impl HlsDownloader {
                 // Fetch media playlist
                 let var_req = crate::net::DownloadRequest::new(variant_url.clone(), "IDM-Open/1.0".to_string());
                 let var_resp = net.get(&var_req)?;
-                let var_bytes = var_resp.bytes();
+                let var_bytes: Bytes = var_resp.bytes().map_err(|e| CoreError::Network(e.to_string()))?;
                 
                 match m3u8_rs::parse_playlist(&var_bytes) {
                     Ok((_, Playlist::MediaPlaylist(media))) => media,
@@ -71,9 +72,6 @@ impl HlsDownloader {
             .map_err(|e| CoreError::Io(e.to_string()))?;
 
         // 3. Download Segments
-        let total_segments = media_playlist.segments.len();
-        // Estimation: we don't know total bytes yet for HLS often, so we track downloaded
-        
         let base_url = Url::parse(&task.url).map_err(|e| CoreError::Network(e.to_string()))?;
         let mut downloaded_bytes = 0u64;
 
@@ -93,7 +91,10 @@ impl HlsDownloader {
             for _ in 0..3 {
                 let seg_req = crate::net::DownloadRequest::new(seg_url.clone(), "IDM-Open/1.0".to_string());
                 if let Ok(resp) = net.get(&seg_req) {
-                    let data = resp.bytes();
+                    let data: Bytes = match resp.bytes() {
+                        Ok(b) => b,
+                        Err(_) => continue,
+                    };
                     if let Err(e) = file.write_all(&data) {
                          return Err(CoreError::Io(e.to_string()));
                     }
