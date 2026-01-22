@@ -9,6 +9,7 @@ const kCyberDark = Color(0xFF121A2B);
 const kCyberPanel = Color(0xFF1A2336);
 const kNeonCyan = Color(0xFF14B8A6);
 const kNeonPink = Color(0xFFF25F5C);
+const kNeonYellow = Color(0xFFF6C453);
 const kNeonBlue = Color(0xFF6BA6FF);
 const kMutedText = Color(0xFF9AA7BD);
 
