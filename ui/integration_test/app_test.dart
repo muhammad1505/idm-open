@@ -166,7 +166,7 @@ void main() {
 
     // 10. Browser tab basic presence.
     await tester.tap(find.text('Browser'));
-    await _waitForFinder(tester, find.text('Search or paste download link'));
+    await _waitForFinder(tester, find.text('Search or enter URL'));
 
     // 11. Back to downloads.
     await tester.tap(find.text('Downloads'));
