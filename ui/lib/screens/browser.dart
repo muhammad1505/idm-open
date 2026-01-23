@@ -36,6 +36,20 @@ class _CyberBrowserState extends State<CyberBrowser> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(kCyberBlack)
+      ..addJavaScriptChannel(
+        'IDMDownload',
+        onMessageReceived: (message) {
+          final url = message.message.trim();
+          if (url.isEmpty) return;
+          final parsed = Uri.tryParse(url);
+          if (parsed == null) return;
+          final scheme = parsed.scheme.toLowerCase();
+          if (scheme != 'http' && scheme != 'https' && scheme != 'magnet') {
+            return;
+          }
+          widget.onDownloadRequest(url);
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -56,7 +70,8 @@ class _CyberBrowserState extends State<CyberBrowser> {
               _progress = 0;
             });
             _checkNavigation();
-            _sniffMedia(url);
+            _injectDownloadSniffer();
+            _maybePromptDirectDownload(url);
           },
           onWebResourceError: (WebResourceError error) {
             debugPrint('Web Resource Error: ${error.description}');
@@ -107,22 +122,61 @@ class _CyberBrowserState extends State<CyberBrowser> {
     return false;
   }
 
-  void _sniffMedia(String url) {
-    // A simple sniffer that checks the current URL. 
-    // In a real app, you'd inject JS to find <video> tags.
+  void _maybePromptDirectDownload(String url) {
     if (_isDownloadable(url)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: kCyberPanel,
-          content: Text('Downloadable content detected!', style: TextStyle(color: kNeonCyan)),
-          action: SnackBarAction(
-            label: 'DOWNLOAD',
-            textColor: kNeonYellow,
-            onPressed: () => widget.onDownloadRequest(url),
-          ),
-        ),
-      );
+      widget.onDownloadRequest(url);
     }
+  }
+
+  void _injectDownloadSniffer() {
+    const js = r'''
+(function() {
+  if (window.__idmDownloadHooked) return;
+  window.__idmDownloadHooked = true;
+
+  function isDownloadable(url) {
+    var lower = (url || '').toLowerCase();
+    var exts = [
+      '.mp4', '.mkv', '.webm', '.avi', '.mov',
+      '.mp3', '.wav', '.flac', '.m4a',
+      '.zip', '.rar', '.7z', '.tar', '.gz',
+      '.apk', '.exe', '.msi', '.dmg', '.iso',
+      '.pdf', '.doc', '.docx', '.xls',
+      '.torrent', '.magnet',
+      '.m3u8'
+    ];
+    for (var i = 0; i < exts.length; i++) {
+      if (lower.endsWith(exts[i])) return true;
+    }
+    return false;
+  }
+
+  document.addEventListener('click', function(e) {
+    var el = e.target;
+    while (el && el.tagName !== 'A') {
+      el = el.parentElement;
+    }
+    if (!el) return;
+    var href = el.getAttribute('href');
+    if (!href) return;
+    var absolute = null;
+    try {
+      absolute = new URL(href, window.location.href).toString();
+    } catch (err) {
+      return;
+    }
+    var hasDownloadAttr = el.hasAttribute('download');
+    if (hasDownloadAttr || isDownloadable(absolute)) {
+      if (window.IDMDownload && window.IDMDownload.postMessage) {
+        window.IDMDownload.postMessage(absolute);
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+  }, true);
+})();
+''';
+    _controller.runJavaScript(js);
   }
 
   void _loadUrl(String url) {

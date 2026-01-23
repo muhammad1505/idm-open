@@ -67,6 +67,7 @@ class _IdmAppState extends State<IdmApp> {
   double _maxConnections = 8;
   double _partsPerDownload = 8;
   String _downloadDir = '/storage/emulated/0/Download';
+  bool _downloadPromptOpen = false;
 
   static const List<String> _filters = [
     'All',
@@ -255,26 +256,28 @@ class _IdmAppState extends State<IdmApp> {
   }
 
   Future<void> _addTask() async {
-    if (_core == null) {
-      _log('Command Rejected: Core offline.');
-      return;
-    }
     final dialogContext = _navKey.currentContext;
     if (dialogContext == null) {
       _log('Dialog context unavailable.');
       return;
     }
-    final core = _core!;
     final result = await showDialog<_AddTaskResult>(
       context: dialogContext,
       barrierColor: kCyberBlack.withOpacity(0.8),
       builder: (context) => _CyberAddTaskDialog(defaultPath: _downloadDir),
     );
     if (result == null) return;
+    await _enqueueTask(result.url, result.dest);
+  }
 
-    _log('Injecting Task: ${result.url}');
+  Future<void> _enqueueTask(String url, String dest) async {
+    if (_core == null) {
+      _log('Command Rejected: Core offline.');
+      return;
+    }
+    _log('Injecting Task: $url');
     try {
-      final id = core.addTask(result.url, result.dest);
+      final id = _core!.addTask(url, dest);
       if (id == null) {
         _log('Injection Failed: Null response.');
         if (!mounted) return;
@@ -287,6 +290,45 @@ class _IdmAppState extends State<IdmApp> {
       await _refresh();
     } catch (e) {
       _log('Exception during injection: $e');
+    }
+  }
+
+  Future<void> _promptBrowserDownload(String url) async {
+    if (_downloadPromptOpen) return;
+    final dialogContext = _navKey.currentContext;
+    if (dialogContext == null) {
+      _log('Dialog context unavailable.');
+      return;
+    }
+    _downloadPromptOpen = true;
+    try {
+      final action = await showDialog<_BrowserDownloadAction>(
+        context: dialogContext,
+        barrierColor: kCyberBlack.withOpacity(0.8),
+        builder: (context) => _CyberConfirmDownloadDialog(
+          url: url,
+          downloadDir: _downloadDir,
+        ),
+      );
+      if (action == null) return;
+      if (action == _BrowserDownloadAction.download) {
+        await _enqueueTask(url, _downloadDir);
+        return;
+      }
+      if (action == _BrowserDownloadAction.edit) {
+        final result = await showDialog<_AddTaskResult>(
+          context: dialogContext,
+          barrierColor: kCyberBlack.withOpacity(0.8),
+          builder: (context) => _CyberAddTaskDialog(
+            defaultPath: _downloadDir,
+            initialUrl: url,
+          ),
+        );
+        if (result == null) return;
+        await _enqueueTask(result.url, result.dest);
+      }
+    } finally {
+      _downloadPromptOpen = false;
     }
   }
 
@@ -593,24 +635,7 @@ class _IdmAppState extends State<IdmApp> {
     return CyberBrowser(
       onDownloadRequest: (url) {
         _log('Browser requested download: $url');
-        // Show the add dialog pre-filled
-        final dialogContext = _navKey.currentContext;
-        if (dialogContext != null) {
-          showDialog<_AddTaskResult>(
-            context: dialogContext,
-            barrierColor: kCyberBlack.withOpacity(0.8),
-            builder: (context) => _CyberAddTaskDialog(
-              defaultPath: _downloadDir,
-              initialUrl: url,
-            ),
-          ).then((result) {
-            if (result != null && _core != null) {
-               _core!.addTask(result.url, result.dest);
-               _showSnack('Download Started');
-               _refresh();
-            }
-          });
-        }
+        _promptBrowserDownload(url);
       },
     );
   }
@@ -1675,6 +1700,95 @@ class _CyberIconButton extends StatelessWidget {
       onPressed: onPressed,
       style: IconButton.styleFrom(
         shape: BeveledRectangleBorder(side: BorderSide(color: color.withOpacity(0.5))),
+      ),
+    );
+  }
+}
+
+enum _BrowserDownloadAction { download, edit }
+
+String _filenameFromUrl(String url) {
+  try {
+    final uri = Uri.parse(url);
+    if (uri.pathSegments.isNotEmpty) {
+      final last = uri.pathSegments.last;
+      if (last.isNotEmpty) return last;
+    }
+  } catch (_) {}
+  return url;
+}
+
+class _CyberConfirmDownloadDialog extends StatelessWidget {
+  final String url;
+  final String downloadDir;
+
+  const _CyberConfirmDownloadDialog({required this.url, required this.downloadDir});
+
+  @override
+  Widget build(BuildContext context) {
+    final name = _filenameFromUrl(url);
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: ShapeDecoration(
+          color: kCyberBlack,
+          shape: const BeveledRectangleBorder(
+            side: BorderSide(color: kNeonYellow, width: 1),
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(20), bottomRight: Radius.circular(20)),
+          ),
+          shadows: const [BoxShadow(color: kNeonYellow, blurRadius: 10)],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'CONFIRM DOWNLOAD',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: kNeonYellow, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Text(name, style: const TextStyle(color: Colors.white, fontSize: 14)),
+            const SizedBox(height: 6),
+            Text(url, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+            const SizedBox(height: 6),
+            Text('SAVE TO: $downloadDir', style: const TextStyle(color: kMutedText, fontSize: 11)),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: _CyberButton(
+                    label: 'CANCEL',
+                    icon: Icons.close,
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kNeonCyan,
+                      foregroundColor: kCyberBlack,
+                      shape: const BeveledRectangleBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(10)),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onPressed: () =>
+                        Navigator.pop(context, _BrowserDownloadAction.download),
+                    child: const Text('DOWNLOAD', style: TextStyle(fontWeight: FontWeight.w900)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.pop(context, _BrowserDownloadAction.edit),
+              child: const Text('EDIT PATH', style: TextStyle(color: kNeonYellow)),
+            ),
+          ],
+        ),
       ),
     );
   }
