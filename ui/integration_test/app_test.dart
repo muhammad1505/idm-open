@@ -52,9 +52,16 @@ Future<void> _tapSafe(
   Finder finder, {
   Duration settle = const Duration(milliseconds: 200),
 }) async {
-  await tester.ensureVisible(finder);
+  // Ensure the widget is scrolled into view (if inside a scrollable)
+  await tester.scrollUntilVisible(finder, 50.0);
   await tester.pump(settle);
-  await tester.tap(finder); // Taps the center by default
+  
+  // Get the rect of the widget
+  final rect = tester.getRect(finder);
+  
+  // Tap near the top-center to avoid being blocked by floating elements (like FAB) 
+  // that might cover the center of the list item.
+  await tester.tapAt(rect.topCenter + const Offset(0, 10));
   await tester.pump(settle);
 }
 
