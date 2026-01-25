@@ -1,104 +1,101 @@
-# Gemini Project Context: IDM-Open
+# Smart Download Manager (SDM) - Project Overview
 
-This document provides context for the `idm-open` project, an open-source, cross-platform download manager designed for Android, Windows, and Linux.
+**Identity:** "Fast. Resumable. Everywhere."
+**Previous Name:** IDM-Open / idm-open
 
-## Project Overview
+This document provides context for the **Smart Download Manager (SDM)** project, an open-source, cross-platform download manager designed for Android, Windows, and Linux. It aims to replicate the robustness of IDM with a modern codebase.
 
-**Goal:** Create a feature-rich download manager with IDM-class capabilities (segmentation, resume, scheduling, throttling) using a performant Rust core and a cross-platform Flutter UI.
+## Project Vision & Goal
 
-**Key Features:**
-*   Multi-part downloading.
-*   Resume capability via SQLite persistence.
-*   Scheduling and Throttling.
-*   Proxy/Auth support.
-*   Mirror fallback.
-*   Checksum verification.
-*   Page-to-direct link resolution (Pixeldrain, Google Drive, Mediafire).
+**Goal:** Create a superior download manager that offers high speed, stability, resume capability, multi-connection support, and advanced scheduling, all within a unified cross-platform codebase.
 
-## Architecture
+**Key Features (SDM):**
+*   **Robust Engine:** Multi-part (segmented) downloading, retry logic, resume capability, and checksum verification.
+*   **Cross-Platform UI:** Consistent Flutter-based interface for Android, Windows, and Linux.
+*   **Browser Integration:** "Download with SDM" via extensions (Chrome/Edge/Firefox) and Native Messaging.
+*   **Management:** Queue management and advanced scheduler.
+*   **Media Grabber:** (Future) Video/audio detection from web pages.
 
-The project follows a layered architecture:
+## Technical Architecture
 
-1.  **Core (`core/`):** The heavy lifter written in Rust. Handles networking, file I/O, database interactions (SQLite), and download logic.
-2.  **FFI Layer (`core-ffi/`):** Exposes the core functionality via a C ABI, allowing interaction with Flutter and native system hosts.
-3.  **Interfaces:**
-    *   **CLI (`cli/`):** A Rust-based command-line interface for testing and automation.
-    *   **Daemon (`daemon/`):** A background service for running queued tasks.
-    *   **UI (`ui/`):** A Flutter application providing the user interface.
-    *   **Android Wrapper (`android/`):** Native Android code to wrap the core/UI and handle system intents.
-    *   **Extensions (`extensions/`):** Browser extensions (Chrome/Firefox) and a native messaging host.
+The project follows a layered architecture (Option A: Flutter + Rust):
+
+1.  **Core Engine (`core/`):** The heavy lifter written in **Rust**. Handles networking, file I/O, SQLite database, and download logic (segmentation, resume).
+2.  **FFI Layer (`core-ffi/`):** Exposes the Rust core to Flutter via `flutter_rust_bridge`.
+3.  **UI (`ui/`):** A **Flutter** application providing the user interface.
+4.  **Storage:** **SQLite** embedded in the Core for task persistence.
+5.  **Platform Integration:**
+    *   **Android:** Foreground Service for reliable background downloads (`android/`).
+    *   **Desktop:** Native messaging host for browser communication (`extensions/native-host/`).
 
 ## Tech Stack
 
 *   **Core:** Rust (Cargo workspace).
 *   **UI:** Flutter (Dart).
-*   **Android:** Kotlin/Java (Gradle).
-*   **Database:** SQLite (embedded in Core).
-*   **Interprocess Communication:** FFI (Foreign Function Interface), Native Messaging.
+*   **Database:** SQLite.
+*   **Interprocess Communication:** FFI (Flutter <-> Rust), Native Messaging (Browser <-> Core).
+
+## Roadmap
+
+### Phase 1: MVP Core (Current Focus)
+*   [ ] UI: Home, Add Download Modal.
+*   [ ] Engine: Segmented downloading, Resume support, SQLite DB integration.
+*   [ ] Basic Management: Pause/Resume, Queue, Global Speed Limit.
+*   [ ] Android: Foreground Service implementation.
+
+### Phase 2: Quality & Stability
+*   [ ] Advanced Scheduler.
+*   [ ] Better Error Handling (human-readable codes) & Logging.
+*   [ ] Desktop Tray integration.
+*   [ ] Import/Export Tasks.
+
+### Phase 3: Browser Integration
+*   [ ] Browser Extensions (Chrome/Firefox).
+*   [ ] Native Messaging Host integration.
+*   [ ] Context menu "Download with SDM".
+
+### Phase 4: Power Features
+*   [ ] Media Grabber (m3u8/dash).
+*   [ ] Checksum verification.
+*   [ ] Mirror URL support.
+*   [ ] Remote Control.
 
 ## Directory Structure
 
 *   `core/`: Rust library containing the download engine.
-*   `core-ffi/`: C-compatible interface for the core.
-*   `cli/`: CLI tool to control the engine.
-*   `daemon/`: Background process runner.
-*   `ui/`: Flutter mobile/desktop application.
-*   `android/`: Android-specific wrapper project.
+*   `core-ffi/`: Rust crate exposing functionality to Dart.
+*   `ui/`: Flutter application.
+*   `android/`: Android-specific wrapper and service logic.
 *   `extensions/`: Browser extension source code and native hosts.
-*   `docs/`: Architecture and design documentation.
-*   `services/`: Systemd services and Termux helper scripts.
+*   `cli/`: Rust CLI for testing the engine without UI.
+*   `daemon/`: Background process runner (mostly for desktop/testing).
+*   `docs/`: Architecture and design documentation (See `specification_sdm.md`).
 
 ## Build & Run Instructions
 
-### Rust Components (Core, CLI, Daemon)
-
-Run from the project root (`/data/data/com.termux/files/home/idm-open`):
-
-**Build Core:**
+### Rust Components
+Run from project root:
 ```bash
+# Build Core
 cargo build -p idm-core
-```
 
-**Build & Run CLI:**
-```bash
-# Add a download
+# Run CLI (Test)
 IDM_DB=./idm.db cargo run -p idm-cli -- add <url>
-
-# Run the engine (start downloading)
 IDM_DB=./idm.db cargo run -p idm-cli -- run
 ```
 
-**Build & Run Daemon:**
-```bash
-IDM_DB=./idm.db cargo run -p idm-daemon -- --interval 2
-```
-
 ### Flutter UI
-
-Navigate to the `ui` directory:
 ```bash
 cd ui
 flutter run
 ```
 
-### Android APK
-
-Build via Gradle from the `android` directory (requires Android SDK setup):
-```bash
-cd android
-./gradlew assembleDebug
-```
+### Android
+Build via Gradle from `android/` or run via Flutter (which wraps the Android project).
 
 ## Development Conventions
 
-*   **Workspace:** This is a Rust workspace. Use `-p <package_name>` to target specific crates (e.g., `idm-core`, `idm-cli`).
-*   **Database:** The core relies on an SQLite database. The `IDM_DB` environment variable specifies its location.
-*   **FFI:** Changes to `core` logic that need to be exposed to the UI must be reflected in `core-ffi`.
-*   **Platform Targets:** Primary testing occurs on Android (via Termux) and Linux.
-
-## Current State
-
-*   **Core:** Functional (segments, resume, throttling, checksums implemented).
-*   **Mega.nz:** Pending SDK integration.
-*   **UI:** In development (Flutter).
-*   **Android:** Wrapper integration pending.
+*   **Workspace:** Rust workspace. Use `-p <package_name>` to target crates.
+*   **Database:** `IDM_DB` env var specifies SQLite DB path for CLI/Daemon.
+*   **FFI:** Changes to `core` logic must be exposed via `core-ffi` and generated for Flutter.
+*   **Reference:** See `docs/specification_sdm.md` for the detailed product spec.
