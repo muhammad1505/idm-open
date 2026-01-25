@@ -54,8 +54,7 @@ Future<void> _tapSafe(
 }) async {
   await tester.ensureVisible(finder);
   await tester.pump(settle);
-  final rect = tester.getRect(finder);
-  await tester.tapAt(rect.topLeft + const Offset(16, 16));
+  await tester.tap(finder); // Taps the center by default
   await tester.pump(settle);
 }
 
