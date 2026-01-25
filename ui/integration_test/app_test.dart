@@ -160,8 +160,8 @@ void main() {
 
     // 9. Settings tab toggles.
     await tester.tap(find.text('Settings'));
-    await _waitForFinder(tester, find.text('Smart download'));
-    await tester.tap(find.text('Smart download'));
+    await _waitForFinder(tester, find.text('Clipboard Monitor'));
+    await tester.tap(find.text('Clipboard Monitor'));
     await tester.pump(const Duration(milliseconds: 200));
 
     // 10. Browser tab basic presence.
