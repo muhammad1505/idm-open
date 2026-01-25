@@ -112,7 +112,10 @@ void main() {
     await _waitForFinder(tester, find.text(url), timeout: const Duration(seconds: 20));
 
     // 6. Buka detail task lalu tutup.
-    await tester.pumpAndSettle(); // Tunggu animasi list selesai sepenuhnya
+    // NOTE: Do NOT use pumpAndSettle here because the app has a periodic 1s timer 
+    // that prevents settling. Use a fixed delay instead.
+    await tester.pump(const Duration(seconds: 1)); 
+    
     final taskText = find.text(url);
     final taskCard = find.ancestor(of: taskText, matching: find.byType(GestureDetector));
     
