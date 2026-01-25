@@ -64,7 +64,7 @@ class _IdmAppState extends State<IdmApp> {
   bool _useProxy = false;
 
   double _speedLimit = 0;
-  double _maxConnections = 8;
+  double _maxConnections = 16;
   double _partsPerDownload = 8;
   String _downloadDir = '/storage/emulated/0/Download';
   bool _downloadPromptOpen = false;
@@ -656,7 +656,7 @@ class _IdmAppState extends State<IdmApp> {
             title: 'General',
             children: [
               _buildSwitchTile(
-                title: 'Smart download',
+                title: 'Clipboard Monitor',
                 subtitle: 'Capture links copied to clipboard',
                 value: _smartDownload,
                 onChanged: (value) => setState(() => _smartDownload = value),

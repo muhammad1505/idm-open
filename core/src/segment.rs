@@ -65,23 +65,44 @@ impl Segment {
     }
 }
 
+pub fn calculate_smart_concurrency(total_bytes: u64) -> u32 {
+    match total_bytes {
+        0..=20_971_520 => 1,             // < 20MB: 1 connection
+        20_971_521..=209_715_200 => 4,   // 20MB - 200MB: 4 connections
+        209_715_201..=2_147_483_648 => 8, // 200MB - 2GB: 8 connections
+        _ => 16,                         // > 2GB: 16 connections
+    }
+}
+
 pub fn build_segments(total_bytes: u64, max_segments: u32, min_segment_size: u64) -> Vec<Segment> {
     if total_bytes == 0 {
         return vec![Segment::new(0, 0, 0)];
     }
 
-    if max_segments <= 1 || total_bytes <= min_segment_size {
-        return vec![Segment::new(0, 0, total_bytes - 1)];
+    // 1. Determine smart concurrency based on file size
+    let smart_count = calculate_smart_concurrency(total_bytes);
+
+    // 2. Clamp by user configuration (max_segments)
+    let mut target_count = if smart_count > max_segments {
+        max_segments
+    } else {
+        smart_count
+    };
+
+    // 3. Ensure we don't violate min_segment_size (unless it forces 1 segment)
+    if min_segment_size > 0 {
+        let max_possible_by_size = total_bytes / min_segment_size;
+        if max_possible_by_size < target_count as u64 {
+            target_count = max_possible_by_size as u32;
+        }
     }
 
-    let mut segment_count = (total_bytes + min_segment_size - 1) / min_segment_size;
-    if segment_count == 0 {
-        segment_count = 1;
-    }
-    if segment_count > max_segments as u64 {
-        segment_count = max_segments as u64;
+    // Always at least 1 segment
+    if target_count < 1 {
+        target_count = 1;
     }
 
+    let segment_count = target_count as u64;
     let base = total_bytes / segment_count;
     let remainder = total_bytes % segment_count;
 
@@ -93,6 +114,7 @@ pub fn build_segments(total_bytes: u64, max_segments: u32, min_segment_size: u64
         } else {
             start + base - 1
         };
+        // Distribute remainder bytes to the first few segments
         if index < remainder {
             end += 1;
         }
