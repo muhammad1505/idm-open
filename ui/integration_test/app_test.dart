@@ -52,16 +52,9 @@ Future<void> _tapSafe(
   Finder finder, {
   Duration settle = const Duration(milliseconds: 200),
 }) async {
-  // Ensure the widget is scrolled into view (if inside a scrollable)
   await tester.scrollUntilVisible(finder, 50.0);
   await tester.pump(settle);
-  
-  // Get the rect of the widget
-  final rect = tester.getRect(finder);
-  
-  // Tap near the top-center to avoid being blocked by floating elements (like FAB) 
-  // that might cover the center of the list item.
-  await tester.tapAt(rect.topCenter + const Offset(0, 10));
+  await tester.tap(finder);
   await tester.pump(settle);
 }
 
@@ -119,10 +112,14 @@ void main() {
     await _waitForFinder(tester, find.text(url), timeout: const Duration(seconds: 20));
 
     // 6. Buka detail task lalu tutup.
+    await tester.pumpAndSettle(); // Tunggu animasi list selesai sepenuhnya
     final taskText = find.text(url);
-    final taskCard =
-        find.ancestor(of: taskText, matching: find.byType(GestureDetector));
-    await _tapSafe(tester, taskCard);
+    final taskCard = find.ancestor(of: taskText, matching: find.byType(GestureDetector));
+    
+    // Tap ikon file di dalam kartu (biasanya di kiri, aman dari FAB)
+    final fileIcon = find.descendant(of: taskCard, matching: find.byType(Icon)).first;
+    await _tapSafe(tester, fileIcon);
+    
     await _waitForFinder(tester, find.text('DATA LOG'));
     expect(find.textContaining('URL:'), findsOneWidget);
     expect(find.textContaining('DEST:'), findsOneWidget);
